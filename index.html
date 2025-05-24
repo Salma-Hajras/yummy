@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yummy </title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Hide scrollbar for side menu */
+    #sideMenu::-webkit-scrollbar {
+      display: none;
+    }
+    #sideMenu {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+    #searchResults {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+  </style>
+</head>
+<body class="bg-gray-100 flex">
+
+  <!-- Side Nav -->
+  <nav id="sideMenu" class="fixed top-0 left-0 h-full w-64 bg-gray-900 text-white transform -translate-x-full transition-transform duration-300 z-50 flex flex-col pt-16 px-6 space-y-6 overflow-y-auto">
+    <a href="#" data-section="search" class="opacity-0 transition-opacity duration-300 delay-100 hover:text-yellow-400 cursor-pointer">Search</a>
+    <a href="#" data-section="categories" class="opacity-0 transition-opacity duration-300 delay-200 hover:text-yellow-400 cursor-pointer">Categories</a>
+    <a href="#" data-section="area" class="opacity-0 transition-opacity duration-300 delay-300 hover:text-yellow-400 cursor-pointer">Area</a>
+    <a href="#" data-section="ingredients" class="opacity-0 transition-opacity duration-300 delay-400 hover:text-yellow-400 cursor-pointer">Ingredients</a>
+    <a href="#" data-section="contact" class="opacity-0 transition-opacity duration-300 delay-500 hover:text-yellow-400 cursor-pointer">Contact Us</a>
+  </nav>
+
+  <!-- Open Menu Button -->
+  <button id="openMenuBtn" class="fixed top-4 left-4 z-60 p-3 bg-gray-900 text-white rounded-md shadow-md hover:bg-gray-700 transition">
+    ☰
+  </button>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-8 ml-0 md:ml-64 transition-all duration-300">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">Yummy Meals</h1>
+
+    <!-- Meals Container -->
+    <section id="mealsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <!-- Meals cards will appear here -->
+    </section>
+
+    <!-- Meal Details Modal -->
+    <div id="mealDetailsModal" class="fixed inset-0 bg-black bg-opacity-70 hidden justify-center items-center p-6 z-70">
+      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+        <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+        <div id="mealDetailsContent"></div>
+      </div>
+    </div>
+  </main>
+
+<script>
+  const sideMenu = document.getElementById('sideMenu');
+  const openMenuBtn = document.getElementById('openMenuBtn');
+  const links = sideMenu.querySelectorAll('a');
+  const mealsContainer = document.getElementById('mealsContainer');
+  const mealDetailsModal = document.getElementById('mealDetailsModal');
+  const mealDetailsContent = document.getElementById('mealDetailsContent');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+
+  // Open Side Menu with animation
+  openMenuBtn.addEventListener('click', () => {
+    if (sideMenu.classList.contains('-translate-x-full')) {
+      sideMenu.classList.remove('-translate-x-full');
+      // Animate links opacity one by one
+      links.forEach((link, i) => {
+        setTimeout(() => link.classList.add('opacity-100'), (i + 1) * 100);
+      });
+    } else {
+      closeMenu();
+    }
+  });
+
+  // Close menu function
+  function closeMenu() {
+    sideMenu.classList.add('-translate-x-full');
+    links.forEach(link => link.classList.remove('opacity-100'));
+  }
+
+  // Close menu if click outside (optional)
+  document.body.addEventListener('click', e => {
+    if (!sideMenu.contains(e.target) && e.target !== openMenuBtn) {
+      closeMenu();
+    }
+  });
+
+  // Display meals on page load (first 20 meals)
+  async function fetchInitialMeals() {
+    try {
+      const res = await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s=');
+      const data = await res.json();
+      if (data.meals) {
+        displayMeals(data.meals.slice(0, 20));
+      } else {
+        mealsContainer.innerHTML = '<p class="text-gray-600">No meals found.</p>';
+      }
+    } catch (error) {
+      mealsContainer.innerHTML = '<p class="text-red-500">Failed to load meals.</p>';
+      console.error(error);
+    }
+  }
+  // إضافة وظيفة عند الضغط على روابط السايد ناف
+links.forEach(link => {
+  link.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const section = link.getAttribute('data-section');
+    closeMenu();
+
+    if (section === 'search') {
+      showSearchSection();
+    }
+
+  });
+});
+
+function showSearchSection() {
+  mealsContainer.innerHTML = `
+    <div class="mb-6">
+      <input id="searchByName" type="text" placeholder="Search by meal name..." class="p-2 border border-gray-300 rounded w-full mb-4" />
+      <input id="searchByLetter" type="text" maxlength="1" placeholder="Search by first letter..." class="p-2 border border-gray-300 rounded w-full" />
+    </div>
+    <div id="searchResults" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+  `;
+
+  const searchByName = document.getElementById('searchByName');
+  const searchByLetter = document.getElementById('searchByLetter');
+  const searchResults = document.getElementById('searchResults');
+
+  
+  function displaySearchResults(meals) {
+    searchResults.innerHTML = '';
+    if (!meals) {
+      searchResults.innerHTML = '<p class="text-gray-600">No results found.</p>';
+      return;
+    }
+    meals.slice(0, 20).forEach(meal => {
+      const mealDiv = document.createElement('div');
+      mealDiv.className = 'bg-white rounded shadow cursor-pointer hover:shadow-lg transition p-4 flex flex-col items-center w-full';
+      mealDiv.innerHTML = `
+        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="w-full rounded mb-3" />
+        <h3 class="text-lg font-semibold text-center">${meal.strMeal}</h3>
+      `;
+      mealDiv.addEventListener('click', () => showMealDetails(meal.idMeal));
+      searchResults.appendChild(mealDiv);
+    });
+  }
+
+  // بحث بالاسم
+  searchByName.addEventListener('input', async () => {
+    const query = searchByName.value.trim();
+    if (query.length === 0) {
+      searchResults.innerHTML = '';
+      return;
+    }
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${query}`);
+    const data = await res.json();
+    displaySearchResults(data.meals);
+  });
+
+  // بحث بالحرف الأول
+  searchByLetter.addEventListener('input', async () => {
+    const letter = searchByLetter.value.trim();
+    if (!letter || letter.length !== 1 || !/^[a-zA-Z]$/.test(letter)) {
+      searchResults.innerHTML = '<p class="text-gray-600">Please enter a single letter (A-Z).</p>';
+      return;
+    }
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?f=${letter}`);
+    const data = await res.json();
+    displaySearchResults(data.meals);
+  });
+}
+
+
+  // Display meals cards
+  function displayMeals(meals) {
+    mealsContainer.innerHTML = '';
+    meals.forEach(meal => {
+      const mealDiv = document.createElement('div');
+      mealDiv.className = 'bg-white rounded shadow cursor-pointer hover:shadow-lg transition p-4 flex flex-col items-center';
+      mealDiv.innerHTML = `
+        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="w-full rounded mb-3" />
+        <h3 class="text-lg font-semibold text-center">${meal.strMeal}</h3>
+      `;
+      mealDiv.addEventListener('click', () => showMealDetails(meal.idMeal));
+      mealsContainer.appendChild(mealDiv);
+    });
+  }
+
+  // Show meal details modal
+  async function showMealDetails(mealId) {
+    try {
+      const res = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${mealId}`);
+      const data = await res.json();
+      const meal = data.meals[0];
+
+      // Build ingredients list
+      let ingredientsList = '';
+      for(let i=1; i<=20; i++) {
+        const ingredient = meal[`strIngredient${i}`];
+        const measure = meal[`strMeasure${i}`];
+        if(ingredient && ingredient.trim() !== '') {
+          ingredientsList += `<li>${ingredient} - ${measure}</li>`;
+        }
+      }
+
+      mealDetailsContent.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4 text-center">${meal.strMeal}</h2>
+        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" class="w-full max-w-md mx-auto rounded mb-4" />
+        <p><strong>Category:</strong> ${meal.strCategory || 'N/A'}</p>
+        <p><strong>Area:</strong> ${meal.strArea || 'N/A'}</p>
+        <p class="mt-4"><strong>Instructions:</strong></p>
+        <p class="mb-4 whitespace-pre-wrap">${meal.strInstructions}</p>
+        <p><strong>Ingredients:</strong></p>
+        <ul class="list-disc list-inside mb-4">${ingredientsList}</ul>
+        ${meal.strTags ? `<p><strong>Tags:</strong> ${meal.strTags.split(',').join(', ')}</p>` : ''}
+        <p class="mt-4"><a href="${meal.strSource || '#'}" target="_blank" class="text-blue-600 underline">Source</a></p>
+        <p><a href="${meal.strYoutube || '#'}" target="_blank" class="text-red-600 underline">YouTube Video</a></p>
+      `;
+
+      mealDetailsModal.classList.remove('hidden');
+    } catch (error) {
+      alert('Failed to load meal details.');
+      console.error(error);
+    }
+  }
+
+  // Close modal button
+  closeModalBtn.addEventListener('click', () => {
+    mealDetailsModal.classList.add('hidden');
+  });
+
+  // Prevent modal click from closing
+  mealDetailsModal.addEventListener('click', e => {
+    if(e.target === mealDetailsModal) {
+      mealDetailsModal.classList.add('hidden');
+    }
+  });
+
+  // Initialize on load
+  fetchInitialMeals();
+
+    // 1. دوال  البيانات
+    async function fetchCategories() {
+      const res = await fetch('https://www.themealdb.com/api/json/v1/1/categories.php');
+      const data = await res.json();
+      return data.categories;
+    }
+
+    async function fetchAreas() {
+      const res = await fetch('https://www.themealdb.com/api/json/v1/1/list.php?a=list');
+      const data = await res.json();
+      return data.meals;
+    }
+
+    async function fetchIngredients() {
+      const res = await fetch('https://www.themealdb.com/api/json/v1/1/list.php?i=list');
+      const data = await res.json();
+      return data.meals;
+    }
+
+    // 2. دوال عرض البيانات
+    function displayCategories(categories) {
+      mealsContainer.innerHTML = '';
+      categories.forEach(cat => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded shadow p-4 cursor-pointer hover:shadow-lg';
+        div.innerHTML = `
+          <img src="${cat.strCategoryThumb}" alt="${cat.strCategory}" class="w-full rounded mb-2" />
+          <h3 class="text-center font-semibold">${cat.strCategory}</h3>
+          <p class="text-sm text-gray-600 mt-1">${cat.strCategoryDescription.slice(0,80)}…</p>
+        `;
+        div.addEventListener('click', () => {
+          fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${encodeURIComponent(cat.strCategory)}`)
+            .then(r => r.json())
+            .then(d => displayMeals(d.meals));
+        });
+        mealsContainer.appendChild(div);
+      });
+    }
+
+    function displayAreas(areas) {
+      mealsContainer.innerHTML = '';
+      areas.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded shadow p-4 text-center cursor-pointer hover:shadow-lg';
+        div.textContent = a.strArea;
+        div.addEventListener('click', () => {
+          fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(a.strArea)}`)
+            .then(r => r.json())
+            .then(d => displayMeals(d.meals));
+        });
+        mealsContainer.appendChild(div);
+      });
+    }
+
+    function displayIngredients(ings) {
+      mealsContainer.innerHTML = '';
+      ings.forEach(i => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded shadow p-4 text-center cursor-pointer hover:shadow-lg';
+        div.textContent = i.strIngredient;
+        div.addEventListener('click', () => {
+          fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(i.strIngredient)}`)
+            .then(r => r.json())
+            .then(d => displayMeals(d.meals));
+        });
+        mealsContainer.appendChild(div);
+      });
+    }
+
+    // 3. دوال الأقسام
+    async function showCategoriesSection() {
+      closeMenu();
+      mealsContainer.innerHTML = '<p class="text-center">Loading categories…</p>';
+      const cats = await fetchCategories();
+      displayCategories(cats);
+    }
+
+    async function showAreaSection() {
+      closeMenu();
+      mealsContainer.innerHTML = '<p class="text-center">Loading areas…</p>';
+      const areas = await fetchAreas();
+      displayAreas(areas);
+    }
+
+    async function showIngredientsSection() {
+      closeMenu();
+      mealsContainer.innerHTML = '<p class="text-center">Loading ingredients…</p>';
+      const ings = await fetchIngredients();
+      displayIngredients(ings);
+    }
+
+    // 4. ربط الأقسام مع الروابط
+    links.forEach(link => {
+      link.addEventListener('click', async e => {
+        e.preventDefault();
+        const section = link.dataset.section;
+        switch(section) {
+          case 'search':
+            showSearchSection(); break;
+          case 'categories':
+            await showCategoriesSection(); break;
+          case 'area':
+            await showAreaSection(); break;
+          case 'ingredients':
+            await showIngredientsSection(); break;
+          case 'contact':
+            // showContactSection();
+            break;
+        }
+      });
+    });
+    // 1. دالة إظهار قسم Contact Us
+function showContactSection() {
+  closeMenu();
+  mealsContainer.innerHTML = `
+    <div class="max-w-lg mx-auto bg-white p-6 rounded shadow">
+      <h2 class="text-2xl font-bold mb-4 text-center">Contact Us</h2>
+      <form id="contactForm" class="space-y-4">
+        <div>
+          <label for="name" class="block mb-1 font-medium">Name</label>
+          <input id="name" type="text" class="w-full p-2 border rounded" placeholder="Your name" required />
+          <p id="nameError" class="text-sm text-red-500 hidden">Please enter a valid name (letters only).</p>
+        </div>
+        <div>
+          <label for="email" class="block mb-1 font-medium">Email</label>
+          <input id="email" type="email" class="w-full p-2 border rounded" placeholder="you@example.com" required />
+          <p id="emailError" class="text-sm text-red-500 hidden">Please enter a valid email address.</p>
+        </div>
+        <div>
+          <label for="phone" class="block mb-1 font-medium">Phone</label>
+          <input id="phone" type="text" class="w-full p-2 border rounded" placeholder="10-digit number" required />
+          <p id="phoneError" class="text-sm text-red-500 hidden">Please enter a 10-digit phone number.</p>
+        </div>
+        <div>
+          <label for="message" class="block mb-1 font-medium">Message</label>
+          <textarea id="message" rows="4" class="w-full p-2 border rounded" placeholder="Your message..." required></textarea>
+          <p id="messageError" class="text-sm text-red-500 hidden">Message must be at least 10 characters.</p>
+        </div>
+        <button type="submit" class="w-full p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition">
+          Send Message
+        </button>
+      </form>
+      <p id="formSuccess" class="mt-4 text-green-600 hidden">Your message has been sent successfully! ✅</p>
+    </div>
+  `;
+
+  // 2. ربط التحقق بالـRegex
+  const form = document.getElementById('contactForm');
+  const nameInput = document.getElementById('name');
+  const emailInput = document.getElementById('email');
+  const phoneInput = document.getElementById('phone');
+  const messageInput = document.getElementById('message');
+  const nameError = document.getElementById('nameError');
+  const emailError = document.getElementById('emailError');
+  const phoneError = document.getElementById('phoneError');
+  const messageError = document.getElementById('messageError');
+  const formSuccess = document.getElementById('formSuccess');
+
+  //  الـRegex
+  const nameRegex = /^[A-Za-z\s]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^\d{10}$/;
+
+  // دوال لإظهار/إخفاء الأخطاء
+  function validateInput(input, regex, errorEl) {
+    if (!regex.test(input.value.trim())) {
+      input.classList.add('border-red-500');
+      errorEl.classList.remove('hidden');
+      return false;
+    } else {
+      input.classList.remove('border-red-500');
+      errorEl.classList.add('hidden');
+      return true;
+    }
+  }
+
+  // تحقق عند الإدخال (real-time)
+  nameInput.addEventListener('input', () => validateInput(nameInput, nameRegex, nameError));
+  emailInput.addEventListener('input', () => validateInput(emailInput, emailRegex, emailError));
+  phoneInput.addEventListener('input', () => validateInput(phoneInput, phoneRegex, phoneError));
+  messageInput.addEventListener('input', () => {
+    if (messageInput.value.trim().length < 10) {
+      messageInput.classList.add('border-red-500');
+      messageError.classList.remove('hidden');
+    } else {
+      messageInput.classList.remove('border-red-500');
+      messageError.classList.add('hidden');
+    }
+  });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const isNameValid = validateInput(nameInput, nameRegex, nameError);
+    const isEmailValid = validateInput(emailInput, emailRegex, emailError);
+    const isPhoneValid = validateInput(phoneInput, phoneRegex, phoneError);
+    const isMessageValid = messageInput.value.trim().length >= 10;
+    if (!isMessageValid) {
+      messageInput.classList.add('border-red-500');
+      messageError.classList.remove('hidden');
+    }
+
+    if (isNameValid && isEmailValid && isPhoneValid && isMessageValid) {
+      form.reset();
+      formSuccess.classList.remove('hidden');
+      setTimeout(() => formSuccess.classList.add('hidden'), 5000);
+      // بالعالم الحقيقي ترسل البيانات للسيرفر بـ fetch أو AJAX
+    }
+  });
+}
+
+links.forEach(link => {
+  link.addEventListener('click', async e => {
+    e.preventDefault();
+    const section = link.dataset.section;
+    switch(section) {
+      case 'search':
+        showSearchSection(); break;
+      case 'categories':
+        await showCategoriesSection(); break;
+      case 'area':
+        await showAreaSection(); break;
+      case 'ingredients':
+        await showIngredientsSection(); break;
+      case 'contact':
+        showContactSection(); break;
+    }
+  });
+});
+
+</script>
+
+</body>
+</html>
