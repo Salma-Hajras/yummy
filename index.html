@@ -45,8 +45,48 @@
 
     <!-- Meals Container -->
     <section id="mealsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      <!-- Meals cards will appear here -->
-    </section>
+  <!-- Meals cards will appear here -->
+</section>
+
+<!-- Search Results Section -->
+<section id="searchResultsSection" class="hidden">
+  <div class="mb-6 px-4">
+    <input id="searchByName" type="text" placeholder="Search by meal name..." class="p-2 border border-gray-300 rounded w-full mb-4" />
+    <input id="searchByLetter" type="text" maxlength="1" placeholder="Search by first letter..." class="p-2 border border-gray-300 rounded w-full" />
+  </div>
+  <div id="searchResults" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 pb-6"></div>
+</section>
+
+<!-- Contact Us Section (Initially hidden) -->
+<section id="contactUsSection" class="hidden max-w-xl mx-auto bg-white p-6 rounded shadow mt-6">
+  <h2 class="text-2xl font-bold mb-4 text-center">Contact Us</h2>
+  <form id="contactForm" class="space-y-4">
+    <div>
+      <label for="name" class="block mb-1 font-medium">Name</label>
+      <input id="name" type="text" class="w-full p-2 border rounded" placeholder="Your name" required />
+      <p id="nameError" class="text-sm text-red-500 hidden">Please enter a valid name (letters only).</p>
+    </div>
+    <div>
+      <label for="email" class="block mb-1 font-medium">Email</label>
+      <input id="email" type="email" class="w-full p-2 border rounded" placeholder="you@example.com" required />
+      <p id="emailError" class="text-sm text-red-500 hidden">Please enter a valid email address.</p>
+    </div>
+    <div>
+      <label for="phone" class="block mb-1 font-medium">Phone</label>
+      <input id="phone" type="text" class="w-full p-2 border rounded" placeholder="10-digit number" required />
+      <p id="phoneError" class="text-sm text-red-500 hidden">Please enter a 10-digit phone number.</p>
+    </div>
+    <div>
+      <label for="message" class="block mb-1 font-medium">Message</label>
+      <textarea id="message" rows="4" class="w-full p-2 border rounded" placeholder="Your message..." required></textarea>
+      <p id="messageError" class="text-sm text-red-500 hidden">Message must be at least 10 characters.</p>
+    </div>
+    <button type="submit" class="w-full p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition">
+      Send Message
+    </button>
+    <p id="formSuccess" class="mt-4 text-green-600 hidden text-center">Your message has been sent successfully! ✅</p>
+  </form>
+</section>
 
     <!-- Meal Details Modal -->
     <div id="mealDetailsModal" class="fixed inset-0 bg-black bg-opacity-70 hidden justify-center items-center p-6 z-70">
@@ -61,6 +101,22 @@
   const sideMenu = document.getElementById('sideMenu');
   const openMenuBtn = document.getElementById('openMenuBtn');
   const links = sideMenu.querySelectorAll('a');
+  // Contact form elements
+const form = document.getElementById('contactForm');
+const nameInput = document.getElementById('name');
+const emailInput = document.getElementById('email');
+const phoneInput = document.getElementById('phone');
+const messageInput = document.getElementById('message');
+const nameError = document.getElementById('nameError');
+const emailError = document.getElementById('emailError');
+const phoneError = document.getElementById('phoneError');
+const messageError = document.getElementById('messageError');
+const formSuccess = document.getElementById('formSuccess');
+
+const nameRegex = /^[A-Za-z\s]+$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^\d{10}$/;
+
   const mealsContainer = document.getElementById('mealsContainer');
   const mealDetailsModal = document.getElementById('mealDetailsModal');
   const mealDetailsContent = document.getElementById('mealDetailsContent');
@@ -108,28 +164,14 @@
     }
   }
 
-links.forEach(link => {
-  link.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const section = link.getAttribute('data-section');
-    closeMenu();
 
-    if (section === 'search') {
-      showSearchSection();
-    }
-
-  });
-});
 
 function showSearchSection() {
-  mealsContainer.innerHTML = `
-    <div class="mb-6">
-      <input id="searchByName" type="text" placeholder="Search by meal name..." class="p-2 border border-gray-300 rounded w-full mb-4" />
-      <input id="searchByLetter" type="text" maxlength="1" placeholder="Search by first letter..." class="p-2 border border-gray-300 rounded w-full" />
-    </div>
-<div id="searchResults" class="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]"></div>
-  `;
+  document.getElementById('searchResultsSection').classList.remove('hidden');
+mealsContainer.classList.add('hidden');
+document.getElementById('contactUsSection').classList.add('hidden');
 
+  
   const searchByName = document.getElementById('searchByName');
   const searchByLetter = document.getElementById('searchByLetter');
   const searchResults = document.getElementById('searchResults');
@@ -342,6 +384,12 @@ function showSearchSection() {
     links.forEach(link => {
       link.addEventListener('click', async e => {
         e.preventDefault();
+        // Hide contact section when navigating
+        document.getElementById('searchResultsSection').classList.add('hidden');
+
+document.getElementById('contactUsSection').classList.add('hidden');
+mealsContainer.classList.remove('hidden');
+
         const section = link.dataset.section;
         switch(section) {
           case 'search':
@@ -353,59 +401,19 @@ function showSearchSection() {
           case 'ingredients':
             await showIngredientsSection(); break;
           case 'contact':
-            // showContactSection();
+        showContactForm();
             break;
         }
       });
     });
 
     function showContactForm() {
-      mealsContainer.innerHTML = `
-        <div class="max-w-xl mx-auto bg-white p-6 rounded shadow">
-          <h2 class="text-2xl font-bold mb-4 text-center">Contact Us</h2>
-          <form id="contactForm" class="space-y-4">
-            <div>
-              <label for="name" class="block mb-1 font-medium">Name</label>
-              <input id="name" type="text" class="w-full p-2 border rounded" placeholder="Your name" required />
-              <p id="nameError" class="text-sm text-red-500 hidden">Please enter a valid name (letters only).</p>
-            </div>
-            <div>
-              <label for="email" class="block mb-1 font-medium">Email</label>
-              <input id="email" type="email" class="w-full p-2 border rounded" placeholder="you@example.com" required />
-              <p id="emailError" class="text-sm text-red-500 hidden">Please enter a valid email address.</p>
-            </div>
-            <div>
-              <label for="phone" class="block mb-1 font-medium">Phone</label>
-              <input id="phone" type="text" class="w-full p-2 border rounded" placeholder="10-digit number" required />
-              <p id="phoneError" class="text-sm text-red-500 hidden">Please enter a 10-digit phone number.</p>
-            </div>
-            <div>
-              <label for="message" class="block mb-1 font-medium">Message</label>
-              <textarea id="message" rows="4" class="w-full p-2 border rounded" placeholder="Your message..." required></textarea>
-              <p id="messageError" class="text-sm text-red-500 hidden">Message must be at least 10 characters.</p>
-            </div>
-            <button type="submit" class="w-full p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition">
-              Send Message
-            </button>
-            <p id="formSuccess" class="mt-4 text-green-600 hidden text-center">Your message has been sent successfully! ✅</p>
-          </form>
-        </div>
-      `;
-
-      const form = document.getElementById('contactForm');
-      const nameInput = document.getElementById('name');
-      const emailInput = document.getElementById('email');
-      const phoneInput = document.getElementById('phone');
-      const messageInput = document.getElementById('message');
-      const nameError = document.getElementById('nameError');
-      const emailError = document.getElementById('emailError');
-      const phoneError = document.getElementById('phoneError');
-      const messageError = document.getElementById('messageError');
-      const formSuccess = document.getElementById('formSuccess');
-
-      const nameRegex = /^[A-Za-z\s]+$/;
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const phoneRegex = /^\d{10}$/;
+  closeMenu();
+  document.getElementById('mealsContainer').classList.add('hidden');
+  document.getElementById('contactUsSection').classList.remove('hidden');
+  const searchResults = document.getElementById('searchResults');
+  if (searchResults) searchResults.classList.add('hidden');
+}
 
       function validateInput(input, regex, errorEl) {
         if (!regex.test(input.value.trim())) {
@@ -449,27 +457,8 @@ function showSearchSection() {
           setTimeout(() => formSuccess.classList.add('hidden'), 5000);
         }
       });
-    }
+    
 
- 
-links.forEach(link => {
-  link.addEventListener('click', async e => {
-    e.preventDefault();
-    const section = link.dataset.section;
-    switch(section) {
-      case 'search':
-        showSearchSection(); break;
-      case 'categories':
-        await showCategoriesSection(); break;
-      case 'area':
-        await showAreaSection(); break;
-      case 'ingredients':
-        await showIngredientsSection(); break;
-      case 'contact':
-    showContactForm(); break;
-    }
-  });
-});
 
 </script>
 
